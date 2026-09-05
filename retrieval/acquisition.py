@@ -1,20 +1,14 @@
 """
 Pelengkapan basis pengetahuan secara otomatis.
 
-Ketika sebuah pertanyaan kesehatan tidak menemukan cukup bukti, mesin mencari
-jurnal untuk topik itu ke Crossref, memverifikasi DOI-nya, menyimpannya, lalu
-mengulang pengambilan. Sebelumnya lubang seperti itu hanya bisa ditutup manusia
-yang menjalankan `import_journals`, dan konsumen eksternal tidak punya siapa pun
-yang mengawasi.
+Ketika sebuah pertanyaan tidak menemukan cukup bukti, engine mencari jurnal
+untuk topik itu ke Crossref, memverifikasi DOI-nya, lalu mengulang pengambilan.
+Jurnal baru melewati gerbang relevansi yang sama dengan impor manual.
 
-Jurnal hasil pengambilan otomatis melewati gerbang yang sama dengan impor
-manual: verifikasi DOI, ambang kemiripan makna, fokus judul, dan penyaringan
-topik. Menambah bahan bacaan tidak melonggarkan syarat relevansi.
-
-Pagarnya: hanya untuk pertanyaan yang mengandung konsep kesehatan, satu topik
-sekali per `COOLDOWN_SECONDS`, kuota `HOURLY_BUDGET` per jam, batas waktu
-jaringan pendek, dan setiap kegagalan ditelan sehingga permintaan pengguna tidak
-ikut gagal.
+Dibatasi: satu topik sekali per `COOLDOWN_SECONDS`, kuota `HOURLY_BUDGET` per
+jam, dan setiap kegagalan ditelan agar permintaan pengguna tidak ikut gagal.
+`KNOWLEDGE_ACQUISITION_ENABLED=0` mematikannya, dipakai pengujian agar tidak
+menembak jaringan.
 """
 
 import hashlib
@@ -32,6 +26,7 @@ from ..evidence import link_validator as lv
 from ..lexicon import bilingual_variants
 from .concepts import extract_conditions, extract_health_concepts
 from .. import runtime
+from .. import config
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +105,7 @@ def build_topic_phrase(query: str) -> str:
             if variant.isascii() and variant not in english:
                 english.append(variant)
 
-    # Terjemahan SELALU digabungkan, bukan hanya ketika leksikon gagal total.
+    # Terjemahan selalu digabungkan, bukan hanya ketika leksikon gagal total.
     # Pengenalan sebagian justru menyesatkan: "skabies menular lewat sentuhan
     # kulit" mengenali "kulit" lalu mencari literatur kulit secara umum,
     # sementara penyakit yang sebenarnya ditanyakan tidak pernah ikut dicari.
@@ -192,7 +187,7 @@ def coverage_is_thin(query: str, evidence) -> bool:
         return not any(term in haystack for term in wanted)
 
     # Tidak ada penyakit yang dikenali. Kandidatnya adalah kata yang belum
-    # tercatat di leksikon — persis keadaan penyakit seperti "skabies" atau
+    # tercatat di leksikon, persis keadaan penyakit seperti "skabies" atau
     # "kawasaki", yang tidak akan pernah terlihat bila hanya bersandar pada
     # daftar buatan tangan.
     tokens = [w for w in re.findall(r"[a-z0-9]{5,}", (query or "").lower())
@@ -352,6 +347,9 @@ def ensure_coverage(query: str, health_checked: bool = False) -> int:
 
     JournalArticle = runtime.model("JournalArticle")
 
+    if not config.get_bool("KNOWLEDGE_ACQUISITION_ENABLED", True):
+        return 0
+
     if not health_checked:
         recognized = extract_health_concepts(query) or find_aspects(query)
         if not recognized:
@@ -374,7 +372,7 @@ def ensure_coverage(query: str, health_checked: bool = False) -> int:
         return 0
 
     try:
-        items = search_crossref(topic, mailto=os.getenv("CROSSREF_MAILTO", ""))
+        items = search_crossref(topic, mailto=config.get("CROSSREF_MAILTO", ""))
     except Exception as exc:
         logger.warning("[ACQ] pencarian gagal untuk %r: %s", topic, exc)
         return 0

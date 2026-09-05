@@ -1,13 +1,12 @@
 """
 Kontrak internal Health Intelligence Engine.
 
-Modul ini HANYA berisi struktur data. Tidak ada I/O, tidak ada dependency ke
+Modul ini hanya berisi struktur data. Tidak ada I/O, tidak ada dependency ke
 Django ORM, sehingga bisa dipakai/di-test secara terisolasi.
 
 Catatan kompatibilitas:
     Kontrak di sini adalah kontrak *internal*. Public API Healthify yang sudah
-    ada (POST /api/verify/ dsb) TIDAK memakai struktur ini secara langsung —
-    penerjemahan dilakukan oleh adapter di `api.intelligence.adapters`.
+    ada (POST /api/verify/ dsb) tidak memakai struktur ini secara langsung, penerjemahan dilakukan oleh adapter di `api.intelligence.adapters`.
 """
 
 from dataclasses import dataclass, field, asdict
@@ -16,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 
 class Intent(str, Enum):
-    """Kebutuhan informasi user (§7)."""
+    """Kebutuhan informasi user."""
 
     CLAIM_VERIFICATION = "CLAIM_VERIFICATION"
     HEALTH_INFORMATION = "HEALTH_INFORMATION"
@@ -27,13 +26,13 @@ class Intent(str, Enum):
     # Sapaan, ucapan terima kasih, dan penutup percakapan. Dipisahkan dari
     # UNSUPPORTED karena maknanya berbeda: pesan seperti ini bukan pertanyaan
     # di luar cakupan, melainkan basa-basi yang wajar di ruang obrolan dan
-    # pantas dijawab ramah — bukan dijawab dengan lima jurnal.
+    # pantas dijawab ramah, bukan dijawab dengan lima jurnal.
     SMALL_TALK = "SMALL_TALK"
     UNSUPPORTED = "UNSUPPORTED"
 
 
 class Mode(str, Enum):
-    """Mode pemakaian engine (§6)."""
+    """Mode pemakaian engine."""
 
     CLAIM = "claim"
     CONSULTATION = "consultation"
@@ -54,7 +53,7 @@ class Mode(str, Enum):
 
 
 class EvidenceStatus(str, Enum):
-    """Hasil tahap evidence retrieval (§16)."""
+    """Hasil tahap evidence retrieval."""
 
     SUFFICIENT = "SUFFICIENT"
     PARTIAL = "PARTIAL"
@@ -62,7 +61,7 @@ class EvidenceStatus(str, Enum):
 
 
 class SafetyDecision(str, Enum):
-    """Keputusan safety validator (§17)."""
+    """Keputusan safety validator."""
 
     PASS = "PASS"
     MODIFY = "MODIFY"
@@ -70,7 +69,7 @@ class SafetyDecision(str, Enum):
 
 
 class Provenance(str, Enum):
-    """Asal-usul sebuah informasi dalam summary/response (§20)."""
+    """Asal-usul sebuah informasi dalam summary/response."""
 
     USER_REPORTED = "USER_REPORTED"
     AI_INFERRED = "AI_INFERRED"
@@ -81,7 +80,7 @@ class Provenance(str, Enum):
 class EvidenceOrigin(str, Enum):
     """
     Dari mana sebuah evidence item berasal. Ini adalah pertahanan utama
-    terhadap DOI halusinasi (§14): hanya evidence dengan origin
+    terhadap DOI halusinasi: hanya evidence dengan origin
     KNOWLEDGE_BASE / VECTOR_INDEX / VERIFIED_REGISTRY yang boleh
     dipublikasikan sebagai sumber.
     """
@@ -108,7 +107,7 @@ def _clean(value: Any) -> str:
 
 @dataclass
 class HealthContext:
-    """Structured health context (§8). Field yang tidak dilaporkan user = None/[]."""
+    """Structured health context. Field yang tidak dilaporkan user = None/[]."""
 
     chief_complaint: Optional[str] = None
     symptoms: List[str] = field(default_factory=list)
@@ -134,7 +133,7 @@ class HealthContext:
         ])
 
     def merge(self, other: "HealthContext") -> "HealthContext":
-        """Gabungkan context lama dengan context baru (§9 - akumulasi gejala).
+        """Gabungkan context lama dengan context baru (- akumulasi gejala).
 
         Nilai baru menang untuk field skalar; list digabung tanpa duplikat.
         """
@@ -182,7 +181,7 @@ class EvidenceItem:
     source_type: str = "journal"
     origin: EvidenceOrigin = EvidenceOrigin.KNOWLEDGE_BASE
 
-    # skor (§15)
+    # skor
     semantic_relevance: float = 0.0
     source_quality: float = 0.5
     publication_recency: float = 0.5
@@ -200,7 +199,7 @@ class EvidenceItem:
     off_topic: bool = False
     relevance: float = 0.0  # skor gabungan hasil re-ranking
 
-    # status validasi link (§14 / anti-404)
+    # status validasi link (/ anti-404)
     doi_verified: bool = False
     link_status: str = "unchecked"  # unchecked | verified | unresolvable | skipped
     # True bila judul yang dikirim ternyata milik karya lain dan diganti dengan
@@ -249,7 +248,7 @@ class EvidenceItem:
 
 @dataclass
 class SupportedClaim:
-    """Claim provenance (§14): pernyataan -> evidence pendukung."""
+    """Claim provenance: pernyataan -> evidence pendukung."""
 
     claim: str = ""
     supporting_evidence: List[Dict[str, Any]] = field(default_factory=list)
@@ -274,7 +273,7 @@ class SafetyFlag:
 
 @dataclass
 class IntelligenceRequest:
-    """Unified internal request (§6)."""
+    """Unified internal request."""
 
     query: str = ""
     mode: Mode = Mode.CONSULTATION
@@ -344,7 +343,7 @@ class IntelligenceRequest:
 
 @dataclass
 class IntelligenceResponse:
-    """Standardized internal response (§13)."""
+    """Standardized internal response."""
 
     answer: str = ""
     intent: Intent = Intent.GENERAL_HEALTH
@@ -379,7 +378,7 @@ class IntelligenceResponse:
         return data
 
 
-# Disclaimer wajib untuk output preliminary assessment (§18)
+# Disclaimer yang menyertai setiap asesmen awal
 PRELIMINARY_ASSESSMENT_STATUS = "PRELIMINARY_ASSESSMENT"
 PRELIMINARY_ASSESSMENT_DISCLAIMER = (
     "Informasi ini merupakan asesmen awal yang dihasilkan AI (AI-generated "

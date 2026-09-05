@@ -1,10 +1,10 @@
 """
-Compatibility adapter untuk produk Healthify yang sudah ada (§6, §13).
+Compatibility adapter untuk produk Healthify yang sudah ada.
 
     Existing Healthify Request  ->  Compatibility Adapter  ->  Unified Internal Request
     Internal Response           ->  Compatibility Adapter  ->  Existing API Format
 
-Adapter ini memastikan kontrak publik `/api/verify/` (dan turunannya) TIDAK
+Adapter ini memastikan kontrak publik `/api/verify/` (dan turunannya) tidak
 berubah walaupun engine internal bertambah kemampuannya.
 """
 

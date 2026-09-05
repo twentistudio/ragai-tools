@@ -1,5 +1,5 @@
 """
-Response engine (§12, §13, §16, §18).
+Response engine.
 
 Generation DIPISAH dari retrieval. Urutan yang dijamin modul ini:
 
@@ -7,8 +7,8 @@ Generation DIPISAH dari retrieval. Urutan yang dijamin modul ini:
                   -> Response Generation
 
 LLM hanya boleh menyusun kalimat dari evidence yang sudah divalidasi.
-Bila evidence tidak cukup, LLM TIDAK dipanggil sama sekali — sistem
-mengembalikan jawaban transparan bahwa bukti tidak memadai (§16).
+Bila evidence tidak cukup, LLM tidak dipanggil sama sekali dan sistem
+mengembalikan jawaban transparan bahwa bukti tidak memadai.
 """
 
 import logging
@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
     "Anda adalah asisten informasi kesehatan berbasis bukti untuk platform Healthify. "
-    "Anda BUKAN dokter dan TIDAK boleh memberikan diagnosis, resep, atau dosis obat.\n"
+    "Anda BUKAN dokter dan tidak boleh memberikan diagnosis, resep, atau dosis obat.\n"
     "Aturan mutlak:\n"
-    "1. Gunakan HANYA informasi dari daftar EVIDENCE yang diberikan.\n"
+    "1. Gunakan hanya informasi dari daftar EVIDENCE yang diberikan.\n"
     "2. DILARANG menyebut, mengarang, atau menambahkan sumber, DOI, URL, nama jurnal, "
     "penulis, atau tahun yang tidak ada di daftar EVIDENCE.\n"
     "3. Rujuk evidence dengan penanda [E1], [E2], dst tepat setelah kalimat yang didukungnya.\n"
@@ -84,9 +84,7 @@ _GREETING_TEMPLATE_ID = (
 _CITATION_RE = re.compile(r"\[E(\d{1,2})\]")
 
 
-# --------------------------------------------------------------------------
 # Penyusunan prompt
-# --------------------------------------------------------------------------
 
 def format_evidence_block(evidence: List[EvidenceItem], max_chars: int = 900) -> str:
     """Susun daftar evidence bernomor untuk prompt."""
@@ -136,7 +134,7 @@ def format_history(previous_messages: List[Dict[str, str]], max_turns: int = 6) 
 _INTENT_INSTRUCTION = {
     Intent.CLAIM_VERIFICATION: (
         "Tugas: nilai klaim pengguna terhadap EVIDENCE. Nyatakan apakah klaim "
-        "DIDUKUNG, TIDAK DIDUKUNG, atau BUKTI TIDAK KONKLUSIF, lalu jelaskan alasannya."
+        "DIDUKUNG, tidak DIDUKUNG, atau BUKTI tidak KONKLUSIF, lalu jelaskan alasannya."
     ),
     Intent.SYMPTOM_CONTEXT: (
         "Tugas: tanggapi keluhan pengguna dengan informasi umum berbasis EVIDENCE. "
@@ -199,9 +197,7 @@ def build_prompt(query: str, intent: Intent, context: HealthContext,
     return "\n\n".join(sections)
 
 
-# --------------------------------------------------------------------------
 # Fallback deterministik (tanpa LLM)
-# --------------------------------------------------------------------------
 
 def _first_sentences(text: str, count: int = 2, max_chars: int = 320) -> str:
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", (text or "").strip()) if s.strip()]
@@ -242,9 +238,7 @@ def build_extractive_answer(query: str, intent: Intent, context: HealthContext,
     return "\n".join(parts)
 
 
-# --------------------------------------------------------------------------
 # Generation utama
-# --------------------------------------------------------------------------
 
 def generate_response(query: str,
                       intent: Intent,
@@ -275,7 +269,7 @@ def generate_response(query: str,
                                  (query or "").strip().lower()))
         return (_GREETING_TEMPLATE_ID if greeting else _SMALL_TALK_TEMPLATE_ID), meta
 
-    # §16 — bukti tidak cukup, jadi LLM tidak diminta menebak.
+    #, bukti tidak cukup, jadi LLM tidak diminta menebak.
     if evidence_status == EvidenceStatus.INSUFFICIENT_EVIDENCE or not evidence:
         meta["generator"] = "template_insufficient_evidence"
         return _INSUFFICIENT_TEMPLATE_ID, meta
@@ -302,7 +296,7 @@ def generate_response(query: str,
 
 # Model kadang memakai penanda sitasi sebagai SUBJEK kalimat
 # ("[E1] menyatakan bahwa demam berdarah disebabkan virus dengue").
-# Penanda seperti itu tidak bisa sekadar dihapus — kalimatnya akan kehilangan
+# Penanda seperti itu tidak bisa sekadar dihapus, kalimatnya akan kehilangan
 # subjek ("secara langsung menyatakan bahwa ..."). Normalisasi di bawah
 # mengubahnya menjadi kalimat utuh dengan penanda pindah ke akhir.
 _TRAILING_CITATION_RE = re.compile(r"\[E\d{1,2}\]\s*$")
@@ -318,7 +312,7 @@ _REPORTING_VERBS = (
 #   "[E1] menyatakan bahwa ..."   penanda berkurung
 #   "E1 hanya menyebut bahwa ..." penanda tanpa kurung
 #   "Evidence menyatakan bahwa ..." kata benda internal
-# Ketiganya harus diubah menjadi kalimat biasa; penanda dipindah ke akhir.
+# Ketiganya diubah menjadi kalimat biasa, penanda dipindah ke akhir.
 _LEADING_CITATION_RE = re.compile(
     r"^\s*(?:"
     r"(?P<markers>(?:\[E\d{1,2}\]|\bE\d{1,2}\b)(?:\s*(?:dan|,|&)?\s*(?:\[E\d{1,2}\]|\bE\d{1,2}\b))*)"
@@ -352,7 +346,7 @@ def _normalize_citation_placement(answer: str) -> str:
             rebuilt.append(sentence)
             continue
 
-        # Bila yang cocok hanya KATA (bukan penanda), wajib disertai kata kerja
+        # Bila yang cocok hanya kata, bukan penanda, diperlukan kata kerja
         # pelaporan. Tanpa syarat ini kalimat sah seperti "Bukti ini penting
         # dipahami." ikut dipotong dan kehilangan makna.
         if match.group("subject") and not match.group("reporting"):
@@ -423,16 +417,14 @@ def citation_map(answer: str, evidence: List[EvidenceItem]) -> Dict[int, Evidenc
     return mapping
 
 
-# --------------------------------------------------------------------------
-# Preliminary assessment (§18)
-# --------------------------------------------------------------------------
+# Preliminary assessment
 
 def build_preliminary_assessment(context: HealthContext,
                                  evidence: List[EvidenceItem],
                                  evidence_status: EvidenceStatus,
                                  safety_flags: Optional[List] = None) -> Optional[Dict[str, Any]]:
     """
-    Susun asesmen awal — BUKAN diagnosis.
+    Susun asesmen awal, BUKAN diagnosis.
 
     Hanya dibuat bila ada konteks gejala nyata dari user. Isinya sengaja
     tidak menyebut nama penyakit sebagai kesimpulan; ia merangkum apa yang

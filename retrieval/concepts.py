@@ -1,5 +1,5 @@
 """
-Query normalization & health concept extraction (§10, tahap 1-2).
+Query normalization & health concept extraction (tahap 1-2).
 
 Dipisah dari retriever supaya bisa diuji sendiri dan dipakai ulang oleh
 claim engine maupun consultation engine.
@@ -207,9 +207,6 @@ def build_aspect_groups(query: str) -> List[List[str]]:
 def build_embedding_query(query: str, extra_terms: List[str] = None) -> str:
     """
     Susun teks yang akan di-embed untuk pencarian semantik.
-
-    Kenapa bukan kalimat aslinya
-    ----------------------------
     Basis pengetahuan sebagian besar berbahasa Inggris, sementara pengguna
     bertanya dalam Bahasa Indonesia. Meng-embed kalimat Indonesia mentah
     menghasilkan kemiripan yang rendah dan nyaris seragam: pertanyaan yang

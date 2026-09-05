@@ -1,12 +1,12 @@
 """
-Evidence validation & selection (§10 langkah akhir, §16).
+Evidence validation & selection (langkah akhir, ).
 
 Tugas:
 1. Jalankan validasi link untuk setiap kandidat evidence (anti-404).
 2. Buang evidence yang tidak layak publikasi (termasuk sumber karangan LLM).
 3. Tentukan status kecukupan bukti: SUFFICIENT / PARTIAL / INSUFFICIENT_EVIDENCE.
 
-Kalau bukti tidak cukup, pipeline TIDAK boleh menyuruh LLM menebak — lihat
+Kalau bukti tidak cukup, pipeline tidak boleh menyuruh LLM menebak, lihat
 `api.intelligence.reasoning`.
 """
 
@@ -165,7 +165,7 @@ def select_evidence(items: Iterable[EvidenceItem],
     if off_topic_count:
         logger.info("[EVIDENCE] %d evidence dibuang karena membahas topik lain",
                     off_topic_count)
-    # Bila SEMUA kandidat di luar topik, jangan mengosongkan hasil begitu saja;
+    # Bila seluruh kandidat di luar topik, hasil tidak dikosongkan begitu saja;
     # biarkan ambang relevansi di bawah yang memutuskan.
     publishable = on_topic or []
 
@@ -177,8 +177,8 @@ def select_evidence(items: Iterable[EvidenceItem],
     selected = _dedupe_by_title(relevant)[:limit]
     status = classify_sufficiency(selected)
 
-    # Konsistensi kontrak: bila bukti dinyatakan tidak memadai, jangan tetap
-    # menerbitkan daftar sumber — response akan bertentangan dengan dirinya
+    # Konsistensi kontrak: bukti yang dinyatakan tidak memadai tidak
+    # menerbitkan daftar sumber, response akan bertentangan dengan dirinya
     # sendiri ("bukti tidak ditemukan" tetapi ada sumber terlampir).
     if status == EvidenceStatus.INSUFFICIENT_EVIDENCE:
         return [], status
@@ -238,7 +238,7 @@ def _drop_semantically_unrelated(items: List[EvidenceItem]) -> List[EvidenceItem
 
 
 def classify_sufficiency(selected: List[EvidenceItem]) -> EvidenceStatus:
-    """Tentukan status kecukupan bukti (§16)."""
+    """Tentukan status kecukupan bukti."""
     if not selected:
         return EvidenceStatus.INSUFFICIENT_EVIDENCE
 

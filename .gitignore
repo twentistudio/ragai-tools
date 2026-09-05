@@ -1,0 +1,38 @@
+# Bytecode dan cache Python. Dibuat ulang setiap kali kode dijalankan, dan
+# versinya terikat pada versi interpreter yang membuatnya.
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Kredensial. Engine memerlukan kunci penyedia LLM dan embedding; satu berkas
+# yang lolos ke repositori publik berarti kunci itu harus dicabut.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Lingkungan virtual dan artefak pemaketan.
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+
+# Cache perkakas.
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Basis data lokal dan log, bila engine dijalankan sendiri untuk percobaan.
+*.sqlite3
+*.log
+logs/
+
+# Berkas milik editor dan sistem operasi.
+.idea/
+.vscode/
+.DS_Store

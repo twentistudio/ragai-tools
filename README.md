@@ -67,6 +67,34 @@ Model harus menyediakan field yang dipakai engine (`title`, `abstract`, `doi`,
 aplikasi induk: memindahkan tabel ke engine berarti migrasi rename, dan itu
 ditunda sampai engine benar-benar dipisahkan ke repositori sendiri.
 
+## Memisahkan ke repositori sendiri
+
+Kode engine sudah bersih dari aplikasi induk, tetapi belum semua miliknya
+berada di direktori ini. Yang berikut masih di sisi Healthify dan ikut pindah
+saat pemisahan sungguhan:
+
+| Berkas | Peran |
+|-|-|
+| `api/intelligence_views.py` | endpoint HTTP engine, kunci API, batas laju |
+| `api/intelligence_urls.py` | routing endpoint tersebut |
+| `api/openapi.py` | spesifikasi dan panduan untuk konsumen luar |
+| `api/docs_views.py` | halaman dokumentasi |
+| `api/landing_views.py` | halaman muka |
+
+Model berikut juga milik domain engine, bukan Healthify: `JournalArticle`,
+`ConversationSession`, `ConversationMessage`, `ConsultationSummary`,
+`ApiAccessRequest`, dan `IntelligenceApiKey`. Memindahkannya berarti migrasi
+rename tabel di atas data produksi, jadi paling aman dikerjakan sekali jalan
+saat pemisahan, bukan sebelumnya.
+
+Uji engine masih bercampur di `api/tests_intelligence.py` bersama uji lapisan
+HTTP Healthify.
+
+Yang sudah dijamin: `EngineBoundaryTests` menggagalkan build bila ada impor ke
+aplikasi induk, `EnginePortabilityTests` menjalankan engine dengan model yang
+bukan milik Healthify, dan `ragai.checks` melaporkan pemasangan yang kurang
+lengkap saat start.
+
 ## Isi
 
 | Bagian | Peran |

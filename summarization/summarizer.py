@@ -1,12 +1,12 @@
 """
-Consultation summary (§19) + summary provenance (§20).
+Consultation summary + summary provenance.
 
 Input : transkrip percakapan + structured health context + evidence yang dibahas
 Output : ringkasan terstruktur di mana SETIAP bagian membawa asal-usulnya.
 
 Aturan keras: summary hanya boleh berisi informasi yang benar-benar muncul
 dalam percakapan atau berasal dari evidence. Field yang tidak diketahui tetap
-`null` / list kosong — tidak diisi tebakan.
+`null` / list kosong, tidak diisi tebakan.
 """
 
 import json
@@ -139,7 +139,7 @@ def build_summary(session,
         PRELIMINARY_ASSESSMENT_DISCLAIMER, Provenance.SYSTEM_GENERATED
     ))
 
-    # 5) Preliminary assessment — bukan diagnosis.
+    # 5) Preliminary assessment, bukan diagnosis.
     preliminary: Optional[Dict[str, Any]] = None
     if context.symptoms:
         descriptor = ", ".join(context.symptoms[:5])

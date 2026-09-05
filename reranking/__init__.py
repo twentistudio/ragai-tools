@@ -1,5 +1,5 @@
 """
-Re-ranking evidence (§15).
+Re-ranking evidence.
 
 Implementasinya berada di `api.intelligence.evidence.quality` karena skor
 ranking dan skor kualitas memakai dimensi yang sama (semantic_relevance,

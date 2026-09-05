@@ -1,31 +1,16 @@
 """
-Embedding teks yang tidak terikat satu penyedia.
+Embedding teks untuk pencarian semantik.
 
-Latar
------
-Pipeline training Healthify memakai Gemini (`embed_texts_gemini`, 768 dimensi)
-dan tabel pgvector dibuat dengan dimensi tersebut. Bila deployment tidak lagi
-memakai Gemini, jalur embedding mati total: admin tidak bisa meng-embed jurnal
-dan retrieval semantik tidak jalan.
-
-Modul ini menyediakan embedding lewat penyedia yang benar-benar tersedia,
-**dengan dimensi yang cocok dengan kolom vektor yang sudah ada**, sehingga
-tidak perlu migrasi tabel maupun re-embed seluruh korpus.
-
-Urutan penyedia:
-    1. OpenAI  `text-embedding-3-small` — mendukung parameter `dimensions`,
-       jadi keluarannya bisa dipotong tepat ke dimensi tabel (mis. 768).
-    2. Gemini  `embed_texts_gemini` dari pipeline training (bila tersedia).
-    3. sentence-transformers (bila modul training terpasang).
-
-Bila tidak satu pun tersedia, fungsi mengembalikan None — caller harus
-menanganinya, bukan menyimpan vektor nol.
+Memakai OpenAI dengan dimensi yang disesuaikan kolom penyimpanan. Bila
+embedding dimatikan atau kredensialnya tidak ada, pencarian jatuh ke
+pencocokan leksikal.
 """
 
 import logging
 import os
 from typing import List, Optional
 from .. import runtime
+from .. import config
 
 logger = logging.getLogger(__name__)
 
@@ -33,17 +18,6 @@ DEFAULT_DIMENSIONS = 768
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 
 _cached_dimension: Optional[int] = None
-
-
-def _setting(name: str, default=None):
-    try:
-        from django.conf import settings
-        value = getattr(settings, name, None)
-        if value not in (None, ""):
-            return value
-    except Exception:  # pragma: no cover
-        pass
-    return os.getenv(name, default)
 
 
 def target_dimensions() -> int:
@@ -57,7 +31,7 @@ def target_dimensions() -> int:
     """
     global _cached_dimension
 
-    configured = _setting("EMBEDDING_DIMENSIONS")
+    configured = config.get("EMBEDDING_DIMENSIONS")
     if configured:
         try:
             return int(configured)
@@ -113,23 +87,15 @@ def embeddings_enabled() -> bool:
     Dipakai oleh test suite agar tidak menembak jaringan, dan berguna saat
     deployment ingin menjalankan retrieval leksikal saja.
     """
-    flag = _setting("EMBEDDINGS_ENABLED", "1")
+    flag = config.get("EMBEDDINGS_ENABLED", "1")
     return str(flag).strip().lower() not in ("0", "false", "no", "off")
 
 
 def available_provider() -> Optional[str]:
     if not embeddings_enabled():
         return None
-    if os.getenv("OPENAI_API_KEY"):
+    if config.get("OPENAI_API_KEY"):
         return "openai"
-    if os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_API"):
-        return "gemini"
-    try:
-        available = runtime.service("training_modules_available")
-        if available and available():
-            return "sentence_transformers"
-    except Exception:  # pragma: no cover
-        pass
     return None
 
 
@@ -148,16 +114,11 @@ def embed_texts(texts: List[str], dimensions: Optional[int] = None) -> Optional[
 
     dims = int(dimensions or target_dimensions())
 
-    if os.getenv("OPENAI_API_KEY"):
+    if config.get("OPENAI_API_KEY"):
         try:
             return _embed_openai(texts, dims)
         except Exception as exc:
             logger.warning("[EMBED] OpenAI embedding gagal: %s", exc)
-
-    try:
-        return _embed_training(texts, dims)
-    except Exception as exc:
-        logger.info("[EMBED] Embedding pipeline training tidak tersedia: %s", exc)
 
     return None
 
@@ -171,8 +132,8 @@ def embed_text(text: str, dimensions: Optional[int] = None) -> Optional[List[flo
 def _embed_openai(texts: List[str], dims: int) -> List[List[float]]:
     from openai import OpenAI
 
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    model = _setting("EMBEDDING_MODEL", OPENAI_EMBEDDING_MODEL)
+    client = OpenAI(api_key=config.get("OPENAI_API_KEY"))
+    model = config.get("EMBEDDING_MODEL", OPENAI_EMBEDDING_MODEL)
 
     # Batasi panjang input; model punya batas token per item.
     trimmed = [str(t)[:8000] for t in texts]
@@ -191,32 +152,6 @@ def _embed_openai(texts: List[str], dims: int) -> List[List[float]]:
     logger.info("[EMBED] %d embedding dibuat lewat OpenAI (%s, %d dim)",
                 len(vectors), model, dims)
     return vectors
-
-
-def _embed_training(texts: List[str], dims: int) -> List[List[float]]:
-    import sys
-
-    scripts_dir = runtime.service("training_scripts_dir")
-    TRAINING_SCRIPTS_DIR = scripts_dir() if scripts_dir else None
-    if TRAINING_SCRIPTS_DIR and str(TRAINING_SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(TRAINING_SCRIPTS_DIR))
-    from chunk_and_embed import embed_texts_gemini  # type: ignore
-
-    vectors = embed_texts_gemini(list(texts))
-    if not vectors:
-        raise ValueError("embed_texts_gemini mengembalikan hasil kosong")
-    if len(vectors[0]) != dims:
-        raise ValueError(
-            f"Pipeline training mengembalikan {len(vectors[0])} dimensi, diharapkan {dims}"
-        )
-    return vectors
-
-
-# ---------------------------------------------------------------------------
-# Penyediaan tabel vektor
-# ---------------------------------------------------------------------------
-
-VECTOR_TABLE = "embeddings"
 
 
 def ensure_vector_store(dimensions: Optional[int] = None) -> bool:
@@ -266,7 +201,7 @@ def store_vector(doc_id: str, safe_id: str, source_file: str, text: str,
     """
     Simpan satu vektor ke tabel `embeddings`.
 
-    Best-effort: kegagalan di sini TIDAK boleh menggagalkan operasi pemanggil,
+    Best-effort: kegagalan di sini tidak boleh menggagalkan operasi pemanggil,
     karena retrieval leksikal + embedding yang tersimpan di kolom Django sudah
     cukup untuk menjawab. Returns True bila tersimpan.
     """

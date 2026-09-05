@@ -1,5 +1,5 @@
 """
-Ingatan bukti untuk satu percakapan (§9, §10).
+Ingatan bukti untuk satu percakapan.
 
 Satu topik dibahas lewat banyak gelembung pesan. Mengulang pencarian pada tiap
 pertanyaan membuat jurnal yang terpilih berganti antar giliran, sehingga
@@ -142,7 +142,7 @@ def can_answer_from_memory(query: str, pooled: List[EvidenceItem]) -> bool:
 
     Bila pertanyaan menyebut penyakit, itulah penentunya. Bila tidak, ini
     lanjutan wajar dan dijawab dari jurnal yang sama, kecuali ada kata tak
-    dikenal yang juga tidak muncul di jurnal itu — kemungkinan penyakit yang
+    dikenal yang juga tidak muncul di jurnal itu, kemungkinan penyakit yang
     belum tercatat di leksikon.
     """
     if not pooled:
@@ -188,7 +188,7 @@ def topic_changed(query: str, pooled: List[EvidenceItem]) -> bool:
     Dibedakan dari sekadar "tidak terjawab oleh jurnal yang ada": di sini
     pengguna menyebut penyakit tertentu, dan penyakit itu bukan yang dibahas
     jurnal percakapan. Pada keadaan itu konteks percakapan sebelumnya justru
-    menyesatkan pencarian — istilah topik lama menenggelamkan penyakit yang
+    menyesatkan pencarian, istilah topik lama menenggelamkan penyakit yang
     baru disebut, sehingga pencarian "baru" mengembalikan jurnal yang sama.
     """
     if not pooled:

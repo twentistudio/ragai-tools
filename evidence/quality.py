@@ -1,5 +1,5 @@
 """
-Evidence quality & ranking (§15).
+Evidence quality & ranking.
 
 Skor akhir dihitung dari 5 dimensi:
     semantic_relevance   - seberapa dekat evidence dengan query (dari retriever)
@@ -16,11 +16,12 @@ import datetime
 import logging
 import re
 from typing import Any, Dict, Iterable, List, Optional
+from .. import config
 
 logger = logging.getLogger(__name__)
 
 # Bobot default. Bisa dioverride lewat settings.EVIDENCE_SCORE_WEIGHTS.
-# Dokumen yang membahas topik tetapi TIDAK membahas aspek yang ditanyakan
+# Dokumen yang membahas topik tetapi tidak membahas aspek yang ditanyakan
 # hanya mempertahankan sebagian skornya. Menyebut nama penyakit tidak
 # menjadikan sebuah paper sebagai jawaban atas pertanyaan tentang penyakit itu.
 ASPECT_FLOOR = 0.45
@@ -82,12 +83,8 @@ _PREPRINT_RE = re.compile(r"\b(preprint|biorxiv|medrxiv|arxiv|ssrn)\b", re.IGNOR
 
 
 def _get_weights() -> Dict[str, float]:
-    try:
-        from django.conf import settings
-        override = getattr(settings, "EVIDENCE_SCORE_WEIGHTS", None)
-    except Exception:  # pragma: no cover
-        override = None
-    if not isinstance(override, dict):
+    override = config.get_dict("EVIDENCE_SCORE_WEIGHTS")
+    if not override:
         return dict(DEFAULT_WEIGHTS)
     weights = dict(DEFAULT_WEIGHTS)
     for key, value in override.items():

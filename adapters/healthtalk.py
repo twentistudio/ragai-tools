@@ -1,5 +1,5 @@
 """
-Adapter response untuk consumer eksternal (§13, §21).
+Adapter response untuk consumer eksternal.
 
     Internal Response
            |

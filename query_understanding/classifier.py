@@ -1,5 +1,5 @@
 """
-Query understanding (§7).
+Query understanding.
 
 Menentukan *kebutuhan informasi* user sehingga pipeline yang tepat bisa dipilih.
 Klasifikasi ini deterministik (rule + leksikon) supaya:
@@ -7,7 +7,7 @@ Klasifikasi ini deterministik (rule + leksikon) supaya:
   - tidak menambah latency/biaya LLM di jalur panas,
   - tidak pernah "mengarang" intent.
 
-Intent TIDAK mengubah kebenaran jawaban; ia hanya memilih pipeline.
+Intent tidak mengubah kebenaran jawaban; ia hanya memilih pipeline.
 """
 
 import logging
@@ -71,7 +71,7 @@ _CLAIM_STRONG_PATTERNS = [
 ]
 
 # Pola PERNYATAAN sebab-akibat. Ini hanya klaim bila ditulis sebagai
-# pernyataan — bukan ketika dipakai dalam pertanyaan informasi.
+# pernyataan, bukan ketika dipakai dalam pertanyaan informasi.
 #
 # "Vitamin C menyembuhkan kanker."          -> klaim, perlu diverifikasi
 # "Apa yang menyebabkan demam berdarah?"    -> pertanyaan informasi biasa
@@ -155,7 +155,7 @@ def is_out_of_scope(text: str) -> bool:
 
 
 # Basa-basi percakapan: sapaan, ucapan terima kasih, dan penutup. Dikenali
-# hanya bila pesannya memang hanya itu — "halo dok, saya batuk seminggu" tetap
+# hanya bila pesannya memang hanya itu, "halo dok, saya batuk seminggu" tetap
 # laporan gejala, bukan sapaan.
 _SMALL_TALK_PATTERNS = [
     re.compile(r"^\W*(terima\s*kasih|makasih|makasi|thanks|thank\s*you|thx|tengkyu)\b"),
@@ -228,7 +228,7 @@ def classify_intent(query: str,
     # Mode eksplisit dari caller adalah sinyal kuat, tapi bukan penentu mutlak.
     mode = Mode.coerce(mode) if mode is not None else None
 
-    # 2) FOLLOW_UP — hanya masuk akal bila ada riwayat percakapan.
+    # 2) FOLLOW_UP, hanya masuk akal bila ada riwayat percakapan.
     followup_hits = _count_matches(low, _FOLLOWUP_PATTERNS)
     symptom_hits = find_symptom_variants(low)
     if previous_messages and followup_hits:
@@ -248,14 +248,14 @@ def classify_intent(query: str,
 
     # Pola sebab-akibat di dalam pertanyaan informasi ("Apa yang menyebabkan X?")
     # bukan klaim yang perlu diverifikasi. Caller yang menyatakan
-    # mode=information juga tidak boleh dipaksa masuk jalur verifikasi.
+    # mode=information juga tidak dipaksa masuk jalur verifikasi.
     treat_assertion_as_claim = bool(assertion_hits) and not (
         is_information_question or mode in (Mode.INFORMATION, Mode.CONSULTATION)
     )
     claim_hits = strong_claim_hits or (assertion_hits if treat_assertion_as_claim else [])
     self_hits = _count_matches(low, _SYMPTOM_SELF_PATTERNS)
 
-    # 3) CLAIM_VERIFICATION — didahulukan.
+    # 3) CLAIM_VERIFICATION, didahulukan.
     #    Klaim tentang obat/vitamin ("Vitamin C dosis tinggi menyembuhkan kanker")
     #    tetap sebuah klaim yang perlu diverifikasi, bukan permintaan informasi obat.
     #    Pengecualian: laporan gejala orang pertama tetap SYMPTOM_CONTEXT.
@@ -274,7 +274,7 @@ def classify_intent(query: str,
     if mode == Mode.MEDICATION and med_terms:
         return IntentResult(Intent.MEDICATION_INFORMATION, 0.7, ["mode_medication"], True)
 
-    # 5) SYMPTOM_CONTEXT — laporan gejala orang pertama.
+    # 5) SYMPTOM_CONTEXT, laporan gejala orang pertama.
     if symptom_hits and self_hits and not claim_hits:
         signals.append("first_person_symptom")
         signals.extend(f"symptom:{SYMPTOM_LOOKUP.get(s, s)}" for s in symptom_hits[:4])

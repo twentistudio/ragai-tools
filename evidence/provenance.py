@@ -1,5 +1,5 @@
 """
-Claim provenance (§14) & summary provenance (§20).
+Claim provenance & summary provenance.
 
 Tujuan: sistem tahu **bagian mana dari response didukung sumber mana**, bukan
 sekadar menempelkan daftar referensi di bawah jawaban.
@@ -31,10 +31,9 @@ _STOPWORDS = {
     "into", "such", "been", "being", "more", "most", "some", "other",
 }
 
-# Pemisahan kalimat harus MENAHAN penanda sitasi pada kalimat pemiliknya:
+# Pemisahan kalimat menahan penanda sitasi pada kalimat pemiliknya:
 # pada "... perempuan. [E1] Gejalanya ...", penanda [E1] menerangkan kalimat
-# pertama. Memisah tepat sebelum "[E1]" akan memindahkannya ke kalimat kedua —
-# kalimat yang benar-benar bersumber jadi tampak tidak bersumber.
+# pertama. Memisah tepat sebelum "[E1]" akan memindahkannya ke kalimat kedua, # kalimat yang benar-benar bersumber jadi tampak tidak bersumber.
 _SENTENCE_SCAN_RE = re.compile(r"(.+?[.!?]+(?:\s*\[E\d{1,2}\])*)(?=\s+|$)")
 _CITATION_RE = re.compile(r"\[E(\d{1,2})\]")
 _WORD_RE = re.compile(r"[a-zà-ÿ0-9]+", re.IGNORECASE)
@@ -47,8 +46,7 @@ _NON_FACTUAL_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Kalimat yang dihasilkan sistem sendiri (template, peringatan, catatan) —
-# bukan pernyataan medis, jadi tidak perlu dicarikan dukungan bukti.
+# Kalimat yang dihasilkan sistem sendiri (template, peringatan, catatan), # bukan pernyataan medis, jadi tidak perlu dicarikan dukungan bukti.
 _SYSTEM_TEXT_RE = re.compile(
     r"(sistem ini|sistem tidak|kami tidak menebak|kami belum menemukan|"
     r"basis pengetahuan|di luar cakupan|peringatan:|langkah yang disarankan|"
@@ -57,7 +55,7 @@ _SYSTEM_TEXT_RE = re.compile(
     r"melanjutkan pembahasan|untuk pilihan dan dosis obat|"
     # kalimat meta tentang proses penilaian, bukan pernyataan medis
     r"belum (?:dapat dianggap )?final|bukti yang tersedia terbatas|"
-    # ungkapan ketidakpastian penulis — bukan pernyataan medis yang perlu
+    # ungkapan ketidakpastian penulis, bukan pernyataan medis yang perlu
     # ditelusuri ke sumber, justru kebalikannya
     r"belum (?:bisa|dapat) (?:memastikan|disimpulkan|dipastikan)|"
     r"tidak (?:bisa|dapat) (?:memastikan|dipastikan|disimpulkan)|"
@@ -221,7 +219,7 @@ def unsupported_claims(claims: Iterable[SupportedClaim]) -> List[SupportedClaim]
 
 def provenance_entry(value: Any, source: Provenance,
                      detail: Optional[str] = None) -> Dict[str, Any]:
-    """Bungkus sebuah nilai summary dengan asal-usulnya (§20)."""
+    """Bungkus sebuah nilai summary dengan asal-usulnya."""
     return {
         "value": value,
         "provenance": source.value if isinstance(source, Provenance) else str(source),

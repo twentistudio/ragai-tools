@@ -1,5 +1,5 @@
 """
-Structured health context extraction (§8).
+Structured health context extraction.
 
 Mengubah kalimat percakapan menjadi struktur terkontrol.
 
@@ -254,9 +254,9 @@ def extract_health_context(text: str,
     """
     Bangun HealthContext dari satu pesan user.
 
-    Bila `previous` diberikan, hasilnya adalah gabungan (akumulasi) — ini yang
+    Bila `previous` diberikan, hasilnya adalah gabungan (akumulasi), ini yang
     membuat "Saya demam" + "sudah tiga hari" menjadi
-    duration(demam) = 3 hari (§9).
+    duration(demam) = 3 hari.
     """
     text = text or ""
     symptoms = extract_symptoms(text)

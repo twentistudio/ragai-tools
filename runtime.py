@@ -1,23 +1,11 @@
 """
-Titik sambung antara engine dan aplikasi yang memakainya.
+Titik sambung ke aplikasi induk.
 
-Engine ini berdiri sendiri sebagai produk (ragai) tetapi tetap membutuhkan
-beberapa hal dari aplikasi induknya: tempat menyimpan jurnal dan percakapan,
-cara membuat embedding, dan cara menerjemahkan teks. Sebelumnya kebutuhan itu
-dipenuhi dengan mengimpor langsung dari aplikasi Healthify, sehingga engine
-tidak bisa dipakai di tempat lain tanpa membawa serta seluruh produknya.
+Engine hanya menyebut apa yang dibutuhkannya; aplikasi induk mendaftarkan
+pemenuhnya saat start. Tanpa ini engine harus mengimpor aplikasi induk, dan
+tidak bisa dipakai di tempat lain.
 
-Sekarang engine hanya menyebut APA yang dibutuhkannya; aplikasi induk yang
-mendaftarkan pemenuhnya saat start. Healthify melakukannya di `api/apps.py`.
-
-Contoh pemasangan dari aplikasi lain:
-
-    from ragai import runtime
-
-    runtime.configure(
-        models={"JournalArticle": ..., "ConversationSession": ...},
-        services={"translate": ..., "embed_article": ...},
-    )
+    runtime.configure(models={...}, services={...}, config={...})
 """
 
 import logging
@@ -44,15 +32,19 @@ OPTIONAL_SERVICES = ("translate", "embed_article", "training_scripts_dir",
 
 _models: Dict[str, Any] = {}
 _services: Dict[str, Callable] = {}
+_config: Dict[str, Any] = {}
 
 
 def configure(models: Optional[Dict[str, Any]] = None,
-              services: Optional[Dict[str, Callable]] = None) -> None:
-    """Daftarkan model dan layanan milik aplikasi induk."""
+              services: Optional[Dict[str, Callable]] = None,
+              config: Optional[Dict[str, Any]] = None) -> None:
+    """Daftarkan model, layanan, dan konfigurasi milik aplikasi induk."""
     if models:
         _models.update(models)
     if services:
         _services.update(services)
+    if config:
+        _config.update(config)
 
     missing = [name for name in REQUIRED_MODELS if name not in _models]
     if missing:
@@ -80,6 +72,11 @@ def service(name: str) -> Optional[Callable]:
     return _services.get(name)
 
 
+def config_value(name: str) -> Optional[Any]:
+    """Nilai konfigurasi yang didaftarkan induk. Dibaca lewat `ragai.config`."""
+    return _config.get(name)
+
+
 def is_configured() -> bool:
     """Apakah seluruh model yang dibutuhkan sudah terdaftar."""
     return all(name in _models for name in REQUIRED_MODELS)
@@ -89,3 +86,4 @@ def reset() -> None:
     """Kosongkan pendaftaran. Dipakai pengujian yang menukar implementasi."""
     _models.clear()
     _services.clear()
+    _config.clear()

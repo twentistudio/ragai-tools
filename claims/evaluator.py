@@ -1,7 +1,7 @@
 """
-Claim verification di atas shared evidence layer (§11).
+Claim verification di atas shared evidence layer.
 
-Claim engine Healthify yang lama TIDAK diganti: `/api/verify/` tetap memakai
+Claim engine Healthify yang lama tidak diganti: `/api/verify/` tetap memakai
 `api.ai_adapter.call_ai_verify` seperti sebelumnya. Modul ini adalah jalur
 claim verification *di dalam* Health Intelligence Engine, sehingga HealthTalk
 (atau consumer lain) bisa memverifikasi klaim lewat kontrak yang sama dengan
@@ -26,7 +26,7 @@ VERDICT_SUPPORTED = "supported"
 VERDICT_UNSUPPORTED = "unsupported"
 VERDICT_INCONCLUSIVE = "inconclusive"
 
-# Pemetaan ke label publik Healthify yang sudah ada (jangan diubah).
+# Pemetaan ke label publik Healthify. Nilainya bagian dari kontrak API.
 VERDICT_TO_LEGACY_LABEL = {
     VERDICT_SUPPORTED: "valid",
     VERDICT_UNSUPPORTED: "hoax",
@@ -43,7 +43,7 @@ _REFUTE_CUES = [
 ]
 
 _EVAL_SYSTEM = (
-    "Anda adalah evaluator klaim kesehatan berbasis bukti. Nilai klaim HANYA "
+    "Anda adalah evaluator klaim kesehatan berbasis bukti. Nilai klaim hanya "
     "berdasarkan EVIDENCE yang diberikan. Dilarang memakai pengetahuan di luar "
     "EVIDENCE, dan dilarang menyebut sumber/DOI/URL yang tidak ada di EVIDENCE. "
     "Jika EVIDENCE tidak membahas hubungan yang diklaim, jawab 'inconclusive'."
@@ -84,7 +84,7 @@ def _build_eval_prompt(claim: str, evidence: List[EvidenceItem]) -> str:
     return (
         f"KLAIM YANG DINILAI:\n{claim}\n\n"
         f"EVIDENCE:\n{evidence_text}\n\n"
-        "Balas HANYA dengan JSON valid berikut (tanpa markdown):\n"
+        "Balas hanya dengan JSON valid berikut (tanpa markdown):\n"
         "{\n"
         '  "verdict": "supported" | "unsupported" | "inconclusive",\n'
         '  "confidence": 0.0-1.0,\n'
@@ -172,7 +172,7 @@ def evaluate_claim(claim: str,
     """
     Nilai sebuah klaim terhadap evidence yang sudah divalidasi.
 
-    Bila bukti tidak cukup, hasilnya `inconclusive` — LLM tidak dipanggil (§16).
+    Bila bukti tidak cukup, hasilnya `inconclusive`, LLM tidak dipanggil.
     """
     claim = (claim or "").strip()
     if not claim or not evidence or evidence_status == EvidenceStatus.INSUFFICIENT_EVIDENCE:

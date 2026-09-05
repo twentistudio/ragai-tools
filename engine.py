@@ -1,21 +1,7 @@
 """
-Health Intelligence Engine — orkestrator (§4, §5, §12).
+Orkestrator satu permintaan.
 
-    Health Input
-          v
-    Health Understanding      (query_understanding + context)
-          v
-    Evidence Retrieval        (retrieval + evidence.selector)
-          v
-    Evidence-Grounded Reasoning (claims / reasoning)
-          v
-    Safety Validation         (safety)
-          v
-    Response
-
-Engine ini adalah kapabilitas TAMBAHAN. Produk Healthify yang sudah ada
-(`/api/verify/`, dispute, admin, knowledge base) tetap berjalan tanpa
-menyentuh modul ini sama sekali.
+    pemahaman pertanyaan -> pencarian bukti -> penalaran -> pemeriksaan aman
 """
 
 import logging
@@ -67,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 ENGINE_VERSION = "1.0.0"
 
-# Intent yang dijalankan lewat claim engine (§11)
+# Intent yang dijalankan lewat claim engine
 _CLAIM_INTENTS = {Intent.CLAIM_VERIFICATION}
 
 
@@ -94,15 +80,13 @@ def process(payload: Dict[str, Any], consumer: str = "healthify") -> Intelligenc
     Titik masuk tunggal Health Intelligence Engine.
 
     Args:
-        payload: dict sesuai kontrak §6 (query, mode, context, options)
+        payload: dict sesuai kontrak (query, mode, context, options)
         consumer: identitas pemanggil ("healthify", "healthtalk", ...)
     """
     started = time.time()
     request = IntelligenceRequest.from_payload(payload)
 
-    # ------------------------------------------------------------------
-    # 1. Conversation context (§9)
-    # ------------------------------------------------------------------
+    # 1. Conversation context
     state = load_state(
         conversation_id=request.conversation_id,
         previous_messages=request.previous_messages,
@@ -114,24 +98,18 @@ def process(payload: Dict[str, Any], consumer: str = "healthify") -> Intelligenc
     if not state.has_snapshot and state.health_context.is_empty() and state.messages:
         state.health_context = rebuild_context_from_history(state)
 
-    # ------------------------------------------------------------------
-    # 2. Query understanding (§7)
-    # ------------------------------------------------------------------
+    # 2. Query understanding
     intent_result = classify_intent(
         request.query, mode=request.mode, previous_messages=state.messages
     )
     intent = intent_result.intent
 
-    # ------------------------------------------------------------------
-    # 3. Structured health context (§8) — akumulatif lintas giliran
-    # ------------------------------------------------------------------
+    # 3. Structured health context, akumulatif lintas giliran
     context: HealthContext = extract_health_context(
         request.query, previous=state.health_context
     )
 
-    # ------------------------------------------------------------------
-    # 4. Evidence retrieval (§10)
-    # ------------------------------------------------------------------
+    # 4. Evidence retrieval
     effective_query = build_effective_query(request.query, state, intent)
     terms = context_terms(context)
 
@@ -174,9 +152,7 @@ def process(payload: Dict[str, Any], consumer: str = "healthify") -> Intelligenc
             logger.error("[ENGINE] retrieval gagal: %s", exc, exc_info=True)
             candidates = []
 
-    # ------------------------------------------------------------------
-    # 5. Evidence validation & selection (§14, §15, §16)
-    # ------------------------------------------------------------------
+    # 5. Evidence validation & selection
     evidence, evidence_status = select_evidence(
         candidates, context_terms=terms, limit=request.max_evidence,
         # Tautan bukti yang dipakai ulang sudah diperiksa pada giliran
@@ -224,16 +200,14 @@ def process(payload: Dict[str, Any], consumer: str = "healthify") -> Intelligenc
             except Exception as exc:  # pragma: no cover
                 logger.error("[ENGINE] pengambilan ulang gagal: %s", exc, exc_info=True)
 
-    # ------------------------------------------------------------------
-    # 6. Reasoning (§11 claim / §12 consultation)
-    # ------------------------------------------------------------------
+    # 6. Reasoning (claim / consultation)
     claim_evaluation = None
     if intent in _CLAIM_INTENTS:
         claim_evaluation = evaluate_claim(request.query, evidence, evidence_status)
         answer = claim_evaluation.explanation
         gen_meta = {"generator": f"claim_engine:{claim_evaluation.method}"}
         # Jalur claim engine juga menghasilkan teks yang dibaca manusia, jadi
-        # rujukan sumber di dalamnya harus dinormalkan sama seperti jalur lain.
+        # rujukan sumber di dalamnya dinormalkan sama seperti jalur lain.
         answer = normalize_citation_placement(answer)
     else:
         answer, gen_meta = generate_response(
@@ -246,9 +220,7 @@ def process(payload: Dict[str, Any], consumer: str = "healthify") -> Intelligenc
             language=request.language,
         )
 
-    # ------------------------------------------------------------------
-    # 7. Claim provenance (§14)
-    # ------------------------------------------------------------------
+    # 7. Claim provenance
     # Jawaban template sistem (mis. "bukti tidak memadai", "di luar cakupan")
     # bukan pernyataan medis, jadi tidak perlu ditelusuri ke evidence.
     is_template_answer = str(gen_meta.get("generator", "")).startswith("template_")
@@ -283,9 +255,7 @@ def process(payload: Dict[str, Any], consumer: str = "healthify") -> Intelligenc
             confidence=claim_evaluation.confidence,
         ))
 
-    # ------------------------------------------------------------------
-    # 8. Safety layer (§17)
-    # ------------------------------------------------------------------
+    # 8. Safety layer
     generated_claims = [c for c in attributed if c.claim != request.query]
     safety = validate_response(
         answer=answer,
@@ -297,9 +267,7 @@ def process(payload: Dict[str, Any], consumer: str = "healthify") -> Intelligenc
     )
     answer = safety.answer or answer
 
-    # ------------------------------------------------------------------
-    # 9. Preliminary assessment (§18)
-    # ------------------------------------------------------------------
+    # 9. Preliminary assessment
     preliminary = None
     if request.mode in (Mode.CONSULTATION,) or intent in (
         Intent.SYMPTOM_CONTEXT, Intent.FOLLOW_UP
@@ -308,9 +276,7 @@ def process(payload: Dict[str, Any], consumer: str = "healthify") -> Intelligenc
             context, evidence, evidence_status, safety.flags
         )
 
-    # ------------------------------------------------------------------
     # 10. Persist & respond
-    # ------------------------------------------------------------------
     conversation_id = request.conversation_id
     if conversation_id:
         persist_turn(

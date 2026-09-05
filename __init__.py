@@ -1,31 +1,13 @@
 """
-ragai — mesin tanya jawab kesehatan berbasis literatur jurnal.
+ragai, mesin tanya jawab kesehatan berbasis literatur jurnal.
 
-Menerima satu pertanyaan kesehatan dan mengembalikan jawaban beserta jurnal
-yang menopangnya. Setiap DOI diperiksa ke registry sebelum disajikan, dan
-ketika literaturnya tidak memuat topik yang ditanyakan, engine menyatakannya
-alih-alih menyusun jawaban yang terdengar masuk akal.
+Menerima satu pertanyaan, mengembalikan jawaban beserta jurnal yang
+menopangnya. Ketika literaturnya tidak memuat topik yang ditanyakan, engine
+menyatakannya alih-alih menyusun jawaban yang terdengar masuk akal.
 
-Engine tidak mengenal aplikasi yang memakainya. Kebutuhannya terhadap
-penyimpanan dan layanan luar disebutkan lewat nama peran di `runtime`, dan
-aplikasi induk memenuhinya saat start:
-
-    from ragai import runtime
-
-    runtime.configure(
-        models={"JournalArticle": ..., "ConversationSession": ...},
-        services={"translate": ..., "embed_article": ...},
-    )
-
-Sesudah itu satu panggilan sudah cukup:
-
-    import ragai
-
-    hasil = ragai.process({"query": "apakah demam berdarah ditularkan nyamuk"})
-
-Dipakai dua arah: produk Healthify memanggilnya sebagai pustaka dalam proses
-yang sama, sementara konsumen luar memanggilnya lewat HTTP di
-`/api/v1/intelligence/`.
+Aplikasi induk mendaftarkan penyimpanan dan layanan yang dibutuhkan lewat
+`runtime.configure`; sesudah itu `ragai.process(payload)` sudah cukup. Rincian
+pemasangan ada di README.md.
 """
 
 from . import runtime

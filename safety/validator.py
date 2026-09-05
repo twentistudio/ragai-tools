@@ -1,5 +1,5 @@
 """
-Health safety layer (§17).
+Health safety layer.
 
 Dijalankan SETELAH response dihasilkan dan SEBELUM dikirim keluar.
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # --- pola risiko ------------------------------------------------------------
 
-# Bahasa diagnosis pasti (dilarang — sistem hanya boleh asesmen awal)
+# Bahasa diagnosis pasti. Sistem hanya menyajikan asesmen awal.
 _DIAGNOSIS_CERTAINTY = [
     r"\banda (menderita|mengidap|terkena|positif)\b",
     r"\bkamu (menderita|mengidap|terkena|positif)\b",
@@ -46,7 +46,7 @@ _DANGEROUS_INSTRUCTIONS = [
     r"\bdouble the dose\b",
 ]
 
-# Rekomendasi terapi/resep spesifik (dosis obat) — di luar cakupan
+# Rekomendasi terapi/resep spesifik (dosis obat), di luar cakupan
 _PRESCRIPTIVE = [
     r"\b(minum|konsumsi|gunakan|pakai|take)\b[^.]{0,40}\b\d+\s?(mg|ml|mcg|gram|g)\b",
     r"\b\d+\s?(mg|ml|mcg)\b[^.]{0,30}\b(3|2|1|tiga|dua|satu)\s?(x|kali)\s?(sehari|per hari|sehari)\b",
@@ -120,7 +120,7 @@ def detect_emergency(text: str) -> List[str]:
     Deteksi sinyal kegawatdaruratan pada keluhan pengguna.
 
     Dipakai pada teks yang ditulis pengguna (pesan atau transkrip percakapan),
-    bukan pada jawaban yang dihasilkan sistem — lihat catatan di
+    bukan pada jawaban yang dihasilkan sistem, lihat catatan di
     `validate_response`.
     """
     low = (text or "").lower()
@@ -260,7 +260,7 @@ def validate_response(answer: str,
         report.flags.append(SafetyFlag(
             code="MEDICATION_CONTEXT",
             severity="info",
-            message="Pertanyaan menyangkut obat — jawaban dibatasi pada informasi umum.",
+            message="Pertanyaan menyangkut obat, jawaban dibatasi pada informasi umum.",
         ))
 
     return report

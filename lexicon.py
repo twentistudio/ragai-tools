@@ -90,7 +90,7 @@ SYMPTOM_TERMS = {
 
 # Kondisi/penyakit yang sering disebut
 CONDITION_TERMS = [
-    # "gula darah tinggi" wajib berada di daftar ini, bukan hanya "darah
+    # "gula darah tinggi" ada di daftar ini, bukan hanya "darah
     # tinggi". Pencocokan memilih frasa terpanjang yang menimpa satu rentang
     # teks, sehingga tanpa entri ini pertanyaan tentang gula darah terbaca
     # sebagai hipertensi dan dijawab dengan paper tekanan darah.
@@ -141,7 +141,7 @@ GENERAL_HEALTH_TERMS = [
     "usg", "ct scan", "mri", "cek darah", "medical check up",
 ]
 
-# Sinyal kegawatdaruratan (§17) — harus memicu safety flag kritis
+# Sinyal kegawatdaruratan yang memicu safety flag kritis
 EMERGENCY_TERMS = [
     "nyeri dada hebat", "nyeri dada berat", "dada terasa ditekan",
     "sesak napas berat", "tidak bisa bernapas", "napas berhenti",
@@ -217,8 +217,7 @@ def find_symptom_variants(text: str):
     Varian gejala yang benar-benar muncul sebagai kata utuh di `text`.
 
     Varian diperiksa dari yang terpanjang. Bila sebuah kecocokan menimpa rentang
-    teks yang sudah diklaim varian lain, varian yang lebih pendek diabaikan —
-    supaya "gusi berdarah" tidak sekaligus terhitung sebagai "berdarah".
+    teks yang sudah diklaim varian lain, varian yang lebih pendek diabaikan, supaya "gusi berdarah" tidak sekaligus terhitung sebagai "berdarah".
     """
     low = (text or "").lower()
     if not low:
@@ -239,13 +238,11 @@ def find_symptom_variants(text: str):
     return found
 
 
-# ---------------------------------------------------------------------------
 # Jembatan bilingual ID -> EN
 #
 # Knowledge base sebagian besar berbahasa Inggris sedangkan pertanyaan datang
 # dalam Bahasa Indonesia. Pemetaannya deterministik, bukan terjemahan LLM, agar
 # retrieval tidak bergantung pada ketersediaan API terjemahan.
-# ---------------------------------------------------------------------------
 
 CONDITION_TRANSLATIONS = {
     "demam berdarah": ["dengue", "dengue fever", "dengue hemorrhagic fever", "dhf"],
@@ -369,7 +366,6 @@ GENERAL_TRANSLATIONS = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Penyatuan nama penyakit
 #
 # "darah tinggi" dan "hipertensi" adalah penyakit yang sama tetapi string yang
@@ -449,13 +445,11 @@ def bilingual_variants(term: str):
     return variants
 
 
-# ---------------------------------------------------------------------------
 # Aspek pertanyaan
 #
 # Topik saja tidak cukup: "apa gejala demam berdarah" dan "bagaimana mencegah
 # demam berdarah" bertopik sama tetapi butuh paper berbeda. Aspek adalah hal
 # yang ingin diketahui dari topik itu.
-# ---------------------------------------------------------------------------
 
 ASPECT_TERMS = {
     "gejala": [
@@ -555,12 +549,10 @@ def aspect_variants(aspect: str):
     return ASPECT_TERMS.get((aspect or "").strip().lower(), [])
 
 
-# ---------------------------------------------------------------------------
 # Peta balik EN -> kanonik ID
 #
-# Judul "Urinary Tract Infection" harus menghasilkan konsep yang sama dengan
+# Judul "Urinary Tract Infection" menghasilkan konsep yang sama dengan
 # pertanyaan "infeksi saluran kemih", agar tidak dinilai di luar topik.
-# ---------------------------------------------------------------------------
 
 def _build_reverse_translations():
     mapping = {}

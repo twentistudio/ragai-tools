@@ -1,21 +1,11 @@
 """
-Evidence retrieval (§10).
+Pencarian bukti dari knowledge base.
 
-Pipeline:
-    Query -> Normalisasi -> Ekstraksi konsep -> Retrieval semantik/leksikal
-          -> Filter metadata -> (re-ranking & seleksi ada di modul evidence)
+    Query -> ekstraksi konsep -> pencarian leksikal & semantik -> filter
 
-Sumber pengetahuan yang dipakai — SEMUANYA yang sudah ada, tidak ada yang
-diganti (§10, §22):
-
-    1. `JournalArticle`  : knowledge base jurnal yang diinput admin Healthify.
-    2. `Source`          : sumber yang sudah pernah terkait dengan klaim.
-    3. tabel embeddings  : indeks pgvector milik pipeline training (opsional,
-                           dipakai bila modul training bisa diimpor).
-
-Yang TIDAK pernah dilakukan modul ini: meminta LLM mengarang sumber.
-Setiap EvidenceItem yang keluar dari sini berasal dari baris nyata di
-knowledge base, lengkap dengan id-nya, sehingga bisa ditelusuri (§14).
+Sumbernya `JournalArticle`, `Source`, dan indeks pgvector bila tersedia. Setiap
+hasil berasal dari baris nyata beserta id-nya, sehingga dapat ditelusuri; modul
+ini tidak pernah meminta LLM mengarang sumber.
 """
 
 import logging
@@ -71,9 +61,7 @@ ASPECT_BODY_CREDIT = 0.5
 _YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
 
 
-# --------------------------------------------------------------------------
 # Pencocokan leksikal (bekerja di PostgreSQL maupun SQLite)
-# --------------------------------------------------------------------------
 
 def _as_groups(terms) -> List[Dict[str, Any]]:
     """
@@ -340,9 +328,7 @@ def _year_of(value) -> Optional[int]:
     return int(match.group(0)) if match else None
 
 
-# --------------------------------------------------------------------------
 # Sumber 1: JournalArticle (knowledge base kurasi admin)
-# --------------------------------------------------------------------------
 
 def _candidate_filter(terms):
     """
@@ -385,8 +371,8 @@ def retrieve_from_journals(terms: List[str], limit: int = DEFAULT_CANDIDATE_LIMI
         condition = _candidate_filter(terms)
         if condition is not None:
             queryset = queryset.filter(condition)
-        # Skor SELURUH kandidat yang lolos penyaringan kata kunci, bukan hanya
-        # yang terbaru — kebaruan bukan proksi relevansi.
+        # Seluruh kandidat yang lolos penyaringan kata kunci ikut diskor.
+        # Memotongnya berdasarkan tanggal membuat kebaruan jadi proksi relevansi.
         rows = list(queryset[:MAX_SCORED_CANDIDATES])
     except Exception as exc:
         logger.warning("[RETRIEVAL] query JournalArticle gagal: %s", exc)
@@ -433,9 +419,7 @@ def retrieve_from_journals(terms: List[str], limit: int = DEFAULT_CANDIDATE_LIMI
     return items[:limit]
 
 
-# --------------------------------------------------------------------------
 # Sumber 2: Source (sumber yang sudah tertaut ke klaim terverifikasi)
-# --------------------------------------------------------------------------
 
 def retrieve_from_sources(terms: List[str], limit: int = DEFAULT_CANDIDATE_LIMIT,
                           aspect_groups: Optional[List[List[str]]] = None,
@@ -519,9 +503,7 @@ def retrieve_from_sources(terms: List[str], limit: int = DEFAULT_CANDIDATE_LIMIT
     return items[:limit]
 
 
-# --------------------------------------------------------------------------
-# Sumber 3: indeks vektor pipeline training (pgvector) — opsional
-# --------------------------------------------------------------------------
+# Sumber 3: indeks vektor pipeline training (pgvector), opsional
 
 def _training_retrieval_available() -> bool:
     try:
@@ -533,7 +515,7 @@ def _training_retrieval_available() -> bool:
 
 def embed_query(text: str) -> Optional[List[float]]:
     """
-    Embed query lewat penyedia yang tersedia (OpenAI / Gemini / pipeline training).
+    Embed query lewat penyedia yang tersedia.
 
     Tidak lagi terikat pada modul training: embedding `JournalArticle` yang
     tersimpan di database Django tetap bisa dicocokkan secara semantik meski
@@ -554,7 +536,7 @@ def retrieve_from_vector_index(query: str, terms: List[str], k: int = 10,
                                aspect_groups: Optional[List[List[str]]] = None) -> List[EvidenceItem]:
     """
     Ambil kandidat dari indeks pgvector milik pipeline training.
-    Gagal secara diam-diam bila pipeline/DB tidak tersedia — Healthify tetap
+    Gagal diam-diam bila pipeline atau basis data tidak tersedia; Healthify tetap
     berjalan dengan knowledge base Django saja.
     """
     if not _training_retrieval_available():
@@ -600,9 +582,7 @@ def retrieve_from_vector_index(query: str, terms: List[str], k: int = 10,
     return items
 
 
-# --------------------------------------------------------------------------
 # Orkestrasi
-# --------------------------------------------------------------------------
 
 def _dedupe(items: List[EvidenceItem]) -> List[EvidenceItem]:
     """Buang duplikat berdasarkan DOI, lalu judul ternormalisasi."""
@@ -706,7 +686,7 @@ def retrieve_candidates(query: str,
                         use_vector_index: bool = True) -> List[EvidenceItem]:
     """
     Kumpulkan kandidat evidence dari seluruh sumber pengetahuan yang tersedia.
-    Hasil BELUM di-rerank/diseleksi — itu tugas `intelligence.evidence.selector`.
+    Hasilnya belum diperingkat maupun diseleksi; itu tugas `evidence.selector`.
     """
     normalized = normalize_query(query)
     terms = build_search_term_groups(normalized, extra_terms=extra_terms)

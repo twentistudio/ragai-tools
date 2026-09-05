@@ -1,26 +1,15 @@
 """
-Validasi identitas & link sumber (anti-404 / anti-DOI-halusinasi).
+Verifikasi DOI dan URL.
 
-Masalah yang diselesaikan
--------------------------
-Sebelumnya sumber bisa berasal dari LLM yang "mengarang" DOI, lalu backend
-membentuk URL `https://doi.org/<doi-karangan>` tanpa pernah mengecek apakah
-DOI itu benar-benar ada. Hasilnya user mendapat link 404.
-
-Aturan modul ini
-----------------
-1. DOI dinormalisasi dulu (buang prefix `doi:`, `https://doi.org/`, dsb).
-2. DOI yang tidak cocok pola resmi (`10.<registrant>/<suffix>`) langsung ditolak.
-3. DOI dicek ke DOI Handle System (dan fallback Crossref). Hasil di-cache.
-4. **URL hanya dibentuk jika DOI benar-benar resolve.** Kalau tidak bisa
-   dipastikan (mis. jaringan mati), URL dikosongkan — lebih baik tanpa link
-   daripada link mati.
-5. URL non-DOI dicek via HEAD; 404/410/5xx -> dibuang.
+DOI diperiksa ke Handle System dan Crossref sebelum dijadikan tautan, dan
+judul diambil dari registry. Tanpa ini pembaca menerima tautan yang berujung
+404 atau membuka paper yang berbeda dari judulnya.
 """
 
 import logging
 import re
 from typing import Optional, Tuple
+from .. import config
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +69,6 @@ def _cache_set(key, value, timeout):
         logger.debug("[LINK] penulisan cache gagal (%s): %s", key, exc)
 
 
-def _get_setting(name: str, default):
-    try:
-        from django.conf import settings
-        return getattr(settings, name, default)
-    except Exception:  # pragma: no cover
-        return default
-
-
 def normalize_doi(raw: Optional[str]) -> str:
     """Bersihkan DOI dari prefix/URL dan karakter sampah di ujung."""
     if not raw:
@@ -119,9 +100,6 @@ def fetch_doi_metadata(doi: str, timeout: float = _DEFAULT_TIMEOUT,
                        use_cache: bool = True) -> Optional[dict]:
     """
     Ambil metadata resmi sebuah DOI dari Crossref.
-
-    Kenapa ini perlu
-    ----------------
     Memastikan sebuah DOI *terdaftar* ternyata tidak cukup. LLM dapat
     mengarang judul yang meyakinkan lalu memasangkannya dengan DOI yang
     kebetulan benar-benar ada, tetapi milik paper lain. Hasilnya: judul di
@@ -135,7 +113,7 @@ def fetch_doi_metadata(doi: str, timeout: float = _DEFAULT_TIMEOUT,
     doi = normalize_doi(doi)
     if not doi or not looks_like_doi(doi):
         return None
-    if _get_setting("EVIDENCE_LINK_CHECK_ENABLED", True) is False:
+    if config.get_bool("EVIDENCE_LINK_CHECK_ENABLED", True) is False:
         return None
 
     cache_key = f"doi_meta:v1:{doi.lower()}"
@@ -148,7 +126,7 @@ def fetch_doi_metadata(doi: str, timeout: float = _DEFAULT_TIMEOUT,
     try:
         import os
 
-        mailto = os.getenv("CROSSREF_MAILTO", "")
+        mailto = config.get("CROSSREF_MAILTO", "")
         resp = _http_get(
             f"https://api.crossref.org/works/{doi}",
             timeout=timeout,
@@ -218,7 +196,7 @@ def resolve_doi(doi: str, timeout: float = _DEFAULT_TIMEOUT, use_cache: bool = T
         logger.info("[LINK] DOI malformed, ditolak: %r", doi[:120])
         return STATUS_MALFORMED
 
-    if _get_setting("EVIDENCE_LINK_CHECK_ENABLED", True) is False:
+    if config.get_bool("EVIDENCE_LINK_CHECK_ENABLED", True) is False:
         return STATUS_UNKNOWN
 
     cache_key = f"doi_resolve:v1:{doi.lower()}"
@@ -237,7 +215,7 @@ def resolve_doi(doi: str, timeout: float = _DEFAULT_TIMEOUT, use_cache: bool = T
 
 def _resolve_doi_uncached(doi: str, timeout: float) -> str:
     """Cek DOI ke Handle System, fallback ke Crossref."""
-    # 1) DOI Handle System — sumber kebenaran resmi.
+    # 1) DOI Handle System, sumber kebenaran resmi.
     #    responseCode 1 = handle ada, 100 = handle tidak ditemukan.
     try:
         resp = _http_get(
@@ -288,7 +266,7 @@ def check_url(url: str, timeout: float = _DEFAULT_TIMEOUT, use_cache: bool = Tru
     if not url.lower().startswith(("http://", "https://")):
         return STATUS_MALFORMED, ""
 
-    if _get_setting("EVIDENCE_LINK_CHECK_ENABLED", True) is False:
+    if config.get_bool("EVIDENCE_LINK_CHECK_ENABLED", True) is False:
         return STATUS_UNKNOWN, url
 
     cache_key = f"url_check:v1:{url}"
@@ -332,7 +310,7 @@ def validate_reference(doi: Optional[str], url: Optional[str] = "",
         trust_on_unknown: hanya untuk sumber yang berasal dari knowledge base
             Healthify sendiri (dikurasi admin). Bila True dan status tidak bisa
             dipastikan karena masalah jaringan, link tetap diberikan.
-            Untuk sumber yang berasal dari LLM, WAJIB False.
+            Untuk sumber yang berasal dari LLM, wajib False.
 
     Returns dict:
         {
@@ -381,7 +359,7 @@ def validate_reference(doi: Optional[str], url: Optional[str] = "",
         if u_status == STATUS_VERIFIED:
             return {"doi": "", "url": final_url, "doi_verified": False, "link_status": STATUS_VERIFIED}
         if u_status == STATUS_UNKNOWN:
-            # Tidak bisa dikonfirmasi -> jangan publikasikan link, kecuali sumber internal.
+            # Tidak terkonfirmasi: tautan ditahan, kecuali sumber internal.
             return {
                 "doi": "",
                 "url": final_url if trust_on_unknown else "",
